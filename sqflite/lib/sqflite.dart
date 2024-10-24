@@ -1,17 +1,13 @@
 import 'dart:async';
 
-import 'package:sqflite/src/compat.dart';
-import 'package:sqflite/src/constant.dart';
-import 'package:sqflite/src/factory_impl.dart' show databaseFactory;
-import 'package:sqflite/src/sqflite_impl.dart';
-import 'package:sqflite/src/utils.dart' as impl;
-import 'package:sqflite/utils/utils.dart' as utils;
+import 'package:sqflite_common/utils/utils.dart' as utils;
+import 'package:sqflite_sqlcipher/sqlite_api.dart';
+import 'package:sqflite_sqlcipher/src/factory_sql_cipher_impl.dart' show databaseFactory;
+import 'package:sqflite_sqlcipher/src/sqflite_import.dart' as impl;
+import 'package:sqflite_sqlcipher/src/sqflite_import.dart';
+import 'package:sqflite_sqlcipher/src/sqflite_sql_cipher_impl.dart';
 
-import 'sqlite_api.dart';
-
-export 'package:sqflite/sql.dart' show ConflictAlgorithm;
-export 'package:sqflite/src/compat.dart';
-export 'package:sqflite/src/factory_impl.dart' show databaseFactory;
+export 'package:sqflite_sqlcipher/src/factory_sql_cipher_impl.dart' show databaseFactory;
 
 export 'sqlite_api.dart';
 
@@ -19,6 +15,12 @@ export 'sqlite_api.dart';
 /// sqflite plugin
 ///
 class Sqflite {
+  //static MethodChannel get _channel => channel;
+
+  /// deprecated
+  @Deprecated('internal use only')
+  static Future<String?> get platformVersion => invokeMethod<String>(methodGetPlatformVersion);
+
   /// Turns on debug mode if you want to see the SQL query
   /// executed natively.
   static Future<void> setDebugModeOn([bool on = true]) async {
@@ -34,41 +36,30 @@ class Sqflite {
   ///
   /// To use during developpment/debugging
   /// Set extra dart and nativate debug logs
-  @Deprecated('Dev only')
+  @Deprecated('Debug only')
   static Future<void> devSetDebugModeOn([bool on = true]) {
     impl.debugModeOn = on;
     return setDebugModeOn(on);
   }
 
-  /// Testing only.
-  ///
-  /// deprecated on purpose to remove from code.
-  @Deprecated('Dev only')
-  static Future<void> devSetOptions(SqfliteOptions options) async {
-    await invokeMethod<dynamic>(methodOptions, options.toMap());
-  }
-
   /// Testing only
-  @Deprecated('Dev only')
-  static Future<void> devInvokeMethod(String method,
-      [dynamic arguments]) async {
+  @Deprecated('Testing only')
+  static Future<void> devInvokeMethod(String method, [dynamic arguments]) async {
     await invokeMethod<dynamic>(method, arguments);
   }
 
   /// helper to get the first int value in a query
   /// Useful for COUNT(*) queries
-  static int? firstIntValue(List<Map<String, Object?>> list) =>
-      utils.firstIntValue(list);
+  static int? firstIntValue(List<Map<String, dynamic>> list) => utils.firstIntValue(list);
 
-  /// Utility to encode a blob to allow blob query using
+  /// Utility to encode a blob to allow blow query using
   /// 'hex(blob_field) = ?', Sqlite.hex([1,2,3])
   static String hex(List<int> bytes) => utils.hex(bytes);
 
   /// Sqlite has a dead lock warning feature that will print some text
   /// after 10s, you can override the default behavior
-  static void setLockWarningInfo(
-      {Duration? duration, void Function()? callback}) {
-    utils.setLockWarningInfo(duration: duration!, callback: callback!);
+  static void setLockWarningInfo({Duration? duration, void Function()? callback}) {
+    utils.setLockWarningInfo(duration: duration, callback: callback);
   }
 }
 
@@ -92,8 +83,7 @@ class Sqflite {
 /// If [version] is specified, [onCreate], [onUpgrade], and [onDowngrade] can
 /// be called. These functions are mutually exclusive — only one of them can be
 /// called depending on the context, although they can all be specified to
-/// cover multiple scenarios. If specified, it must be a 32-bits integer greater
-/// than 0.
+/// cover multiple scenarios
 ///
 /// [onCreate] is called if the database did not exist prior to calling
 /// [openDatabase]. You can use the opportunity to create the required tables
@@ -132,15 +122,17 @@ Future<Database> openDatabase(String path,
     OnDatabaseVersionChangeFn? onUpgrade,
     OnDatabaseVersionChangeFn? onDowngrade,
     OnDatabaseOpenFn? onOpen,
+    String? password,
     bool readOnly = false,
     bool singleInstance = true}) {
-  final options = OpenDatabaseOptions(
+  final options = SqlCipherOpenDatabaseOptions(
       version: version,
       onConfigure: onConfigure,
       onCreate: onCreate,
       onUpgrade: onUpgrade,
       onDowngrade: onDowngrade,
       onOpen: onOpen,
+      password: password,
       readOnly: readOnly,
       singleInstance: singleInstance);
   return databaseFactory.openDatabase(path, options: options);
@@ -149,31 +141,24 @@ Future<Database> openDatabase(String path,
 ///
 /// Open the database at a given path in read only mode
 ///
-Future<Database> openReadOnlyDatabase(String path) =>
-    openDatabase(path, readOnly: true);
+Future<Database> openReadOnlyDatabase(String path, {String? password}) =>
+    openDatabase(path, readOnly: true, password: password);
 
 ///
 /// Get the default databases location.
 ///
 /// On Android, it is typically data/data/<package_name>/databases
 ///
-/// On iOS and MacOS, it is the Documents directory.
-///
-/// Note for iOS: Using `path_provider` is recommended to get the
-/// databases directory. The most appropriate location on iOS would be
-/// the Library directory that you could get from the [`path_provider` package]
-/// (https://pub.dev/documentation/path_provider/latest/path_provider/getLibraryDirectory.html).
+/// On iOS, it is the Documents directory
 ///
 Future<String> getDatabasesPath() => databaseFactory.getDatabasesPath();
 
 ///
 /// Delete the database at the given path.
 ///
-Future<void> deleteDatabase(String path) =>
-    databaseFactory.deleteDatabase(path);
+Future<void> deleteDatabase(String path) => databaseFactory.deleteDatabase(path);
 
 ///
 /// Check if a database exists at a given path.
 ///
-Future<bool> databaseExists(String path) =>
-    databaseFactory.databaseExists(path);
+Future<bool> databaseExists(String path) => databaseFactory.databaseExists(path);

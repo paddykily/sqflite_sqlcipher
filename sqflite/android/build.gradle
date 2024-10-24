@@ -1,4 +1,4 @@
-group 'com.tekartik.sqflite'
+group 'com.davidmartos96.sqflite_sqlcipher'
 version '1.0-SNAPSHOT'
 
 buildscript {
@@ -8,7 +8,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:4.1.0'
+        classpath 'com.android.tools.build:gradle:8.3.0'
     }
 }
 
@@ -19,21 +19,20 @@ rootProject.allprojects {
     }
 }
 
-allprojects {
-    gradle.projectsEvaluated {
-        tasks.withType(JavaCompile) {
-            options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
-        }
-    }
-}
-
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 31
+    compileSdk 34
+
+    namespace 'com.davidmartos96.sqflite_sqlcipher'
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
 
     defaultConfig {
-        minSdkVersion 16
+        minSdk 21
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     lintOptions {
@@ -42,5 +41,9 @@ android {
 }
 
 dependencies {
-    testImplementation 'junit:junit:4.13.1'
+    implementation 'net.zetetic:sqlcipher-android:4.5.7@aar'
+
+    // We need to use a version compatible with sqlcipher. See here:
+    // https://github.com/sqlcipher/sqlcipher-android/blob/c5bd0cf2a2d26cd977d6127180f594750675093e/build.gradle#L34
+    implementation 'androidx.sqlite:sqlite:2.3.1'
 }
